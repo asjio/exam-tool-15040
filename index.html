@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>15040 习思想概论 - 考前练习</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Microsoft YaHei", sans-serif; background: #f7f6f4; color: #1a1a1a; padding: 20px; }
+.container { max-width: 900px; margin: 0 auto; }
+.card { background: #fff; border: 1px solid #e5e3df; border-radius: 6px; padding: 20px; margin-bottom: 14px; }
+button { cursor: pointer; padding: 6px 16px; border: 1px solid #d0cdc7; background: #fff; border-radius: 4px; font-size: 14px; }
+button:hover { background: #f0eeea; }
+button.primary { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+button.primary:hover { background: #991b1b; }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+h1 { font-size: 20px; margin-bottom: 4px; }
+.sub { color: #78716c; font-size: 13px; margin-bottom: 16px; }
+.mode-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+.mode-bar select, .mode-bar input { padding: 6px 10px; border: 1px solid #d0cdc7; border-radius: 4px; font-size: 14px; }
+.tag { display: inline-block; padding: 1px 8px; font-size: 12px; border-radius: 3px; background: #f0eeea; color: #57534e; margin-right: 6px; }
+.tag-choice { background: #eff6ff; color: #1e40af; }
+.tag-short { background: #fef3c7; color: #92400e; }
+.tag-essay { background: #fce7f3; color: #9d174d; }
+.q { font-size: 15px; line-height: 1.7; margin-bottom: 12px; font-weight: 600; }
+.opts label { display: block; padding: 8px 12px; border: 1px solid #e5e3df; border-radius: 4px; margin-bottom: 6px; cursor: pointer; }
+.opts label:hover { background: #fafaf9; }
+.opts label.sel { border-color: #b91c1c; background: #fef2f2; }
+.opts label.correct { border-color: #15803d; background: #f0fdf4; }
+.opts label.wrong { border-color: #b91c1c; background: #fef2f2; }
+.exp { padding: 10px 12px; background: #fafaf9; border-left: 3px solid #b91c1c; font-size: 13px; margin-top: 8px; color: #44403c; }
+.judge { padding: 8px 12px; margin-top: 8px; font-size: 14px; font-weight: 600; border-radius: 4px; }
+.judge.right { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.judge.wrong { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.short-answer { width: 100%; min-height: 90px; padding: 10px; border: 1px solid #d0cdc7; border-radius: 4px; font-size: 14px; font-family: inherit; resize: vertical; }
+.std-answer { padding: 12px; background: #f0fdf4; border-left: 3px solid #15803d; font-size: 14px; white-space: pre-wrap; line-height: 1.7; margin-top: 8px; }
+.bar { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.score { font-size: 16px; font-weight: 700; color: #b91c1c; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid #e5e3df; text-align: left; }
+th { background: #fafaf9; }
+.hist-score { font-weight: 700; }
+.nav { display: flex; gap: 8px; align-items: center; }
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.stat-cell { background: #fff; border: 1px solid #e5e3df; border-radius: 6px; padding: 12px; text-align: center; }
+.stat-cell .num { font-size: 22px; font-weight: 700; color: #b91c1c; }
+.stat-cell .lbl { font-size: 12px; color: #78716c; margin-top: 2px; }
+.footer-note { font-size: 12px; color: #a8a29e; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>15040 习思想概论 - 考前练习</h1>
+  <div class="sub">10月24日考试 · 共 <span id="totalQ"></span> 题 · 每次交卷自动记录到本地，可导出JSON存档</div>
+
+  <div class="card" id="homeView">
+    <div class="stat-grid">
+      <div class="stat-cell"><div class="num" id="stCount">0</div><div class="lbl">已考次数</div></div>
+      <div class="stat-cell"><div class="num" id="stBest">-</div><div class="lbl">最高正确率</div></div>
+      <div class="stat-cell"><div class="num" id="stLast">-</div><div class="lbl">最近正确率</div></div>
+      <div class="stat-cell"><div class="num" id="stAvg">-</div><div class="lbl">平均正确率</div></div>
+    </div>
+    <div class="mode-bar">
+      <span>模式：</span>
+      <select id="mode">
+        <option value="real">全真模拟（选择25x2 + 简答5x6 + 论述2x10 = 100分）</option>
+        <option value="random20">随机20题（选择15+简答5）</option>
+        <option value="random40">随机40题（选择30+简答10）</option>
+        <option value="choice30">纯选择30题</option>
+        <option value="short10">纯简答10题</option>
+        <option value="essay5">纯论述5题</option>
+        <option value="chapter">按章节刷题</option>
+        <option value="wrongbook">错题本（累计答对3次移除）</option>
+      </select>
+      <select id="chapterSel" style="display:none"></select>
+      <button class="primary" onclick="startExam()">开始考试</button>
+      <button onclick="showWrongBook()">查看错题本</button>
+      <button onclick="const n=backfillWrongBook();alert('从历史记录回填了 '+n+' 道错题');">回填历史错题</button>
+    </div>
+    <h3 style="margin:14px 0 8px">历史记录</h3>
+    <table>
+      <thead><tr><th>时间</th><th>模式</th><th>题数</th><th>选择正确</th><th>正确率</th><th>用时</th></tr></thead>
+      <tbody id="histBody"></tbody>
+    </table>
+    <div class="footer-note">记录存浏览器localStorage；点"导出存档"保存到本地文件夹（建议存到 桌面\自考\exam_records\）</div>
+    <div style="margin-top:10px">
+      <button onclick="exportRecords()">导出存档</button>
+      <button onclick="clearRecords()">清空记录</button>
+    </div>
+  </div>
+
+  <div class="card" id="examView" style="display:none">
+    <div class="mode-bar" style="justify-content:space-between">
+      <span><span class="tag" id="exMode"></span><span class="tag" id="exProg"></span></span>
+      <span class="tag" id="exTimer">00:00</span>
+    </div>
+    <div id="qBox"></div>
+    <div class="bar">
+      <div class="nav">
+        <button onclick="prevQ()">上一题</button>
+        <button onclick="nextQ()">下一题</button>
+      </div>
+      <button class="primary" onclick="submitExam()">交卷</button>
+    </div>
+  </div>
+
+  <div class="card" id="resultView" style="display:none">
+    <h3>考试结果</h3>
+    <div class="stat-grid" style="margin-top:12px">
+      <div class="stat-cell"><div class="num" id="rScore">-</div><div class="lbl">选择正确率</div></div>
+      <div class="stat-cell"><div class="num" id="rCorrect">-</div><div class="lbl">选择对题</div></div>
+      <div class="stat-cell"><div class="num" id="rWrong">-</div><div class="lbl">选择错题</div></div>
+      <div class="stat-cell"><div class="num" id="rTime">-</div><div class="lbl">用时</div></div>
+    </div>
+    <div id="reviewBox"></div>
+    <div style="margin-top:12px">
+      <button class="primary" onclick="goHome()">返回首页</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let QUESTIONS = [];
+let exam = null;
+let timer = null;
+
+async function loadQuestions() {
+  const r = await fetch('questions.json');
+  QUESTIONS = await r.json();
+  document.getElementById('totalQ').textContent = QUESTIONS.length;
+  const chapters = [...new Set(QUESTIONS.map(q => q.chapter))];
+  document.getElementById('chapterSel').innerHTML = chapters.map(c => `<option value="${c}">${c}</option>`).join('');
+  renderHome();
+}
+
+document.getElementById('mode').addEventListener('change', e => {
+  document.getElementById('chapterSel').style.display = e.target.value === 'chapter' ? '' : 'none';
+});
+
+function getRecords() {
+  try { return JSON.parse(localStorage.getItem('exam_records') || '[]'); } catch { return []; }
+}
+function saveRecord(rec) {
+  const rs = getRecords(); rs.push(rec);
+  localStorage.setItem('exam_records', JSON.stringify(rs));
+}
+
+function renderHome() {
+  const rs = getRecords();
+  document.getElementById('stCount').textContent = rs.length;
+  if (rs.length) {
+    const rates = rs.map(r => r.rate);
+    document.getElementById('stBest').textContent = Math.max(...rates) + '%';
+    document.getElementById('stLast').textContent = rates[rates.length-1] + '%';
+    document.getElementById('stAvg').textContent = Math.round(rates.reduce((a,b)=>a+b,0)/rates.length) + '%';
+  }
+  document.getElementById('histBody').innerHTML = rs.slice().reverse().map(r => {
+    const score = r.isReal && r.totalScore != null ? `<b style="color:#b91c1c">${r.totalScore}分</b>` : `${r.rate}%`;
+    return `<tr><td>${r.time}</td><td>${r.modeName}</td><td>${r.total}</td><td>${r.correct}/${r.choiceTotal}</td><td class="hist-score">${score}</td><td>${r.duration}</td></tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:#a8a29e">暂无记录</td></tr>';
+}
+
+function shuffle(a) { const x = a.slice(); for (let i=x.length-1;i>0;i--) { const j = Math.floor(Math.random()*(i+1)); [x[i],x[j]] = [x[j],x[i]]; } return x; }
+function sample(arr, n) { return shuffle(arr).slice(0, Math.min(n, arr.length)); }
+
+// 错题本：{qid: {wrong: N, correctStreak: M}}
+function getWrongBook() { try { return JSON.parse(localStorage.getItem('wrong_book')||'{}'); } catch { return {}; } }
+function saveWrongBook(wb) { localStorage.setItem('wrong_book', JSON.stringify(wb)); }
+function addWrong(qid) {
+  const wb = getWrongBook();
+  if (!wb[qid]) wb[qid] = { wrong: 0, correctStreak: 0 };
+  wb[qid].wrong++;
+  wb[qid].correctStreak = 0;
+  saveWrongBook(wb);
+}
+function addCorrect(qid) {
+  const wb = getWrongBook();
+  if (!wb[qid]) return;
+  wb[qid].correctStreak++;
+  if (wb[qid].correctStreak >= 3) delete wb[qid];
+  saveWrongBook(wb);
+}
+function showWrongBook() {
+  const wb = getWrongBook();
+  const ids = Object.keys(wb);
+  if (!ids.length) { alert('错题本为空，刷题去吧'); return; }
+  const list = ids.map(id => {
+    const q = QUESTIONS.find(x => x.id == id);
+    const w = wb[id];
+    return q ? `[${q.chapter}] ${q.q} (错${w.wrong}次, 连对${w.correctStreak}/3)` : null;
+  }).filter(Boolean).join('\n');
+  alert(`错题本共 ${ids.length} 题：\n\n${list}`);
+}
+
+// 从历史考试记录回填错题本
+function backfillWrongBook() {
+  const rs = getRecords();
+  const wb = getWrongBook();
+  let added = 0;
+  rs.forEach(r => {
+    (r.detail || []).forEach(d => {
+      if (d.type === 'choice' && d.right === false && !wb[d.id]) {
+        wb[d.id] = { wrong: 1, correctStreak: 0 };
+        added++;
+      }
+    });
+  });
+  saveWrongBook(wb);
+  return added;
+}
+
+function startExam() {
+  const mode = document.getElementById('mode').value;
+  const chs = QUESTIONS.filter(q => q.type === 'choice');
+  const shs = QUESTIONS.filter(q => q.type === 'short');
+  const ess = QUESTIONS.filter(q => q.type === 'essay');
+  let picked = [], modeName = '';
+  if (mode === 'real') { picked = [...sample(chs,25), ...sample(shs,5), ...sample(ess,2)]; modeName = '全真模拟'; }
+  else if (mode === 'random20') { picked = [...sample(chs,15), ...sample(shs,5)]; modeName = '随机20题'; }
+  else if (mode === 'random40') { picked = [...sample(chs,30), ...sample(shs,10)]; modeName = '随机40题'; }
+  else if (mode === 'choice30') { picked = sample(chs,30); modeName = '纯选择30题'; }
+  else if (mode === 'short10') { picked = sample(shs,10); modeName = '纯简答10题'; }
+  else if (mode === 'essay5') { picked = sample(ess,5); modeName = '纯论述5题'; }
+  else if (mode === 'wrongbook') {
+    const wb = getWrongBook();
+    const wbIds = Object.keys(wb).map(Number);
+    if (!wbIds.length) { alert('错题本为空，先去刷题错几道再来'); return; }
+    picked = QUESTIONS.filter(q => wbIds.includes(q.id));
+    shuffle(picked);
+    modeName = '错题本(' + picked.length + '题)';
+  }
+  else { const ch = document.getElementById('chapterSel').value; picked = QUESTIONS.filter(q => q.chapter === ch); modeName = '章节: ' + ch; }
+  exam = { list: picked, idx: 0, answers: {}, shortScores: {}, essayScores: {}, startTime: Date.now(), modeName, submitted: false, isReal: mode === 'real', isWrongBook: mode === 'wrongbook' };
+  document.getElementById('homeView').style.display = 'none';
+  document.getElementById('resultView').style.display = 'none';
+  document.getElementById('examView').style.display = '';
+  document.getElementById('exMode').textContent = modeName;
+  renderQ();
+  clearInterval(timer);
+  timer = setInterval(() => {
+    const s = Math.floor((Date.now() - exam.startTime) / 1000);
+    document.getElementById('exTimer').textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+  }, 1000);
+}
+
+function renderQ() {
+  const q = exam.list[exam.idx];
+  document.getElementById('exProg').textContent = `第 ${exam.idx+1} / ${exam.list.length} 题`;
+  const userAns = exam.answers[q.id];
+  const typeName = q.type === 'choice' ? '单选' : q.type === 'short' ? '简答' : '论述';
+  const typeCls = q.type === 'choice' ? 'tag-choice' : q.type === 'short' ? 'tag-short' : 'tag-essay';
+  const score = exam.isReal ? (q.type === 'choice' ? ' (2分)' : q.type === 'short' ? ' (6分)' : ' (10分)') : '';
+  let html = `<div class="q"><span class="tag ${typeCls}">${typeName}${score}</span><span class="tag">${q.chapter}</span>${exam.idx+1}. ${q.q}</div>`;
+  if (q.type === 'choice') {
+    const answered = !!userAns;
+    html += '<div class="opts">';
+    q.opts.forEach(o => {
+      const letter = o.charAt(0);
+      let cls = '';
+      if (answered || exam.submitted) {
+        if (letter === q.a) cls = 'correct';
+        else if (userAns === letter) cls = 'wrong';
+      } else if (userAns === letter) {
+        cls = 'sel';
+      }
+      html += `<label class="${cls}" onclick="choose('${letter}')">${o}</label>`;
+    });
+    html += '</div>';
+    if (answered && !exam.submitted) {
+      if (userAns === q.a) {
+        let tip = '回答正确';
+        if (exam.isWrongBook) {
+          const wb = getWrongBook();
+          const w = wb[q.id];
+          if (w) tip += `（连对 ${w.correctStreak}/3）`;
+          else tip += '（已错3次并连对3次，从错题本移除）';
+        }
+        html += `<div class="judge right">${tip}</div>`;
+      }
+      else { html += `<div class="judge wrong">回答错误，正确答案: ${q.a}</div>`; html += noteBlock(q); }
+      html += `<div class="exp">${q.exp||''}</div>`;
+    } else if (exam.submitted) {
+      if (userAns === q.a) html += `<div class="judge right">回答正确</div>`;
+      else { html += `<div class="judge wrong">${userAns ? '回答错误' : '未作答'}，正确答案: ${q.a}</div>`; html += noteBlock(q); }
+      html += `<div class="exp">${q.exp||''}</div>`;
+    }
+  } else {
+    html += `<textarea class="short-answer" placeholder="在此作答..." onchange="saveShort(this.value)" ${exam.submitted?'disabled':''}>${userAns||''}</textarea>`;
+    if (exam.submitted) {
+      html += `<div class="std-answer"><b>参考答案:</b>\n${q.a}</div>`;
+      if (exam.isReal) {
+        const max = q.type === 'short' ? 6 : 10;
+        const cur = (q.type === 'short' ? exam.shortScores[q.id] : exam.essayScores[q.id]);
+        html += `<div style="margin-top:8px;padding:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:4px">
+          <b>对照答案自评分（满分${max}分）:</b>
+          <input type="number" min="0" max="${max}" step="0.5" value="${cur ?? ''}" onchange="setScore(${q.id},'${q.type}',this.value,${max})" style="width:70px;padding:4px 8px;border:1px solid #d0cdc7;border-radius:4px;margin-left:6px">
+          <span style="color:#78716c;font-size:12px;margin-left:8px">输完自动保存</span>
+        </div>`;
+      }
+    }
+  }
+  document.getElementById('qBox').innerHTML = html;
+}
+
+function setScore(qid, type, val, max) {
+  let v = parseFloat(val);
+  if (isNaN(v)) v = 0;
+  v = Math.max(0, Math.min(max, v));
+  if (type === 'short') exam.shortScores[qid] = v;
+  else exam.essayScores[qid] = v;
+}
+
+// 错题笔记：localStorage存 {qid: text}
+function getNotes() { try { return JSON.parse(localStorage.getItem('q_notes')||'{}'); } catch { return {}; } }
+function saveNote(qid, text) {
+  const ns = getNotes();
+  if (text.trim()) ns[qid] = text; else delete ns[qid];
+  localStorage.setItem('q_notes', JSON.stringify(ns));
+}
+function noteBlock(q) {
+  const ns = getNotes();
+  const existing = ns[q.id] || '';
+  return `<div style="margin-top:8px;padding:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:4px">
+    <b style="font-size:13px">错题笔记</b><span style="color:#78716c;font-size:12px;margin-left:8px">下次再错时提醒你</span>
+    <textarea class="short-answer" style="min-height:50px;margin-top:6px" placeholder="记点啥...（如：混淆点、关键词）" onchange="saveNote(${q.id},this.value)">${existing}</textarea>
+  </div>`;
+}
+
+function choose(letter) {
+  if (exam.submitted) return;
+  const q = exam.list[exam.idx];
+  if (exam.answers[q.id]) return;
+  exam.answers[q.id] = letter;
+  renderQ();
+  // 记录错题本
+  if (letter === q.a) {
+    addCorrect(q.id);
+  } else {
+    addWrong(q.id);
+    const ns = getNotes();
+    if (ns[q.id]) setTimeout(() => alert('你之前错过这题，笔记提醒：\n\n' + ns[q.id]), 100);
+  }
+}
+function saveShort(v) { exam.answers[exam.list[exam.idx].id] = v; }
+function prevQ() { if (exam.idx > 0) { exam.idx--; renderQ(); } }
+function nextQ() { if (exam.idx < exam.list.length - 1) { exam.idx++; renderQ(); } }
+
+function submitExam() {
+  if (!confirm('确认交卷？')) return;
+  clearInterval(timer);
+  exam.submitted = true;
+  const duration = Math.floor((Date.now() - exam.startTime) / 1000);
+  const choiceQs = exam.list.filter(q => q.type === 'choice');
+  const correct = choiceQs.filter(q => exam.answers[q.id] === q.a).length;
+  const rate = choiceQs.length ? Math.round(correct / choiceQs.length * 100) : 0;
+  // 全真模式算总分（仅选择题客观分；简答/论述自评分后累加）
+  let choiceScore = 0, totalScore = 0, hasTotal = false;
+  if (exam.isReal) {
+    choiceScore = correct * 2;
+    hasTotal = true;
+    totalScore = choiceScore; // 自评分在结果页输入后通过 finishScoring 累加
+  }
+  const rec = {
+    time: new Date().toLocaleString('zh-CN'),
+    modeName: exam.modeName,
+    total: exam.list.length,
+    choiceTotal: choiceQs.length,
+    correct, rate,
+    duration: Math.floor(duration/60) + '分' + (duration%60) + '秒',
+    isReal: exam.isReal,
+    choiceScore,
+    totalScore: null,  // 待自评分后更新
+    detail: exam.list.map(q => ({ id: q.id, chapter: q.chapter, type: q.type, q: q.q, user: exam.answers[q.id] || '', answer: q.a, right: q.type === 'choice' ? exam.answers[q.id] === q.a : null }))
+  };
+  exam.rec = rec;
+  // 展示结果
+  document.getElementById('examView').style.display = 'none';
+  document.getElementById('resultView').style.display = '';
+  if (exam.isReal) {
+    document.getElementById('rScore').textContent = choiceScore + '分';
+    document.getElementById('rScore').previousElementSibling; // noop
+    document.querySelectorAll('#resultView .stat-cell .lbl')[0].textContent = '选择题得分/50';
+  } else {
+    document.getElementById('rScore').textContent = rate + '%';
+    document.querySelectorAll('#resultView .stat-cell .lbl')[0].textContent = '选择正确率';
+  }
+  document.getElementById('rCorrect').textContent = correct;
+  document.getElementById('rWrong').textContent = choiceQs.length - correct;
+  document.getElementById('rTime').textContent = rec.duration;
+
+  // 复盘
+  const wrongs = exam.list.filter(q => q.type === 'choice' && exam.answers[q.id] !== q.a);
+  let rv = '<h3 style="margin:14px 0 8px">错题复盘</h3>';
+  if (!wrongs.length) rv += '<div style="color:#15803d;padding:8px">选择全对，牛！</div>';
+  wrongs.forEach(q => {
+    const userLetter = exam.answers[q.id];
+    const userOpt = userLetter ? q.opts.find(o => o.charAt(0) === userLetter) : null;
+    const correctOpt = q.opts.find(o => o.charAt(0) === q.a);
+    rv += `<div class="card" style="margin-bottom:8px"><div class="q"><span class="tag">${q.chapter}</span>${q.q}</div>
+      <div style="padding:6px 12px;background:#fef2f2;border-left:3px solid #b91c1c;font-size:13px;margin-bottom:6px"><b>你的答案:</b> ${userOpt ? userOpt : '未作答'}</div>
+      <div style="padding:6px 12px;background:#f0fdf4;border-left:3px solid #15803d;font-size:13px;margin-bottom:6px"><b>正确答案:</b> ${correctOpt}</div>
+      <div class="exp">${q.exp||''}</div></div>`;
+  });
+
+  const others = exam.list.filter(q => q.type !== 'choice');
+  if (others.length) {
+    rv += `<h3 style="margin:14px 0 8px">简答/论述对照 ${exam.isReal ? '(逐题翻页自评分，最后点下方"完成评分")' : ''}</h3>`;
+    others.forEach(q => {
+      rv += `<div class="card" style="margin-bottom:8px"><div class="q"><span class="tag">${q.type==='short'?'简答':'论述'}</span><span class="tag">${q.chapter}</span>${q.q}</div><div style="font-size:13px;color:#57534c;margin-bottom:6px"><b>你的答案:</b><br>${(exam.answers[q.id]||'未作答').replace(/\n/g,'<br>')}</div><div class="std-answer"><b>参考答案:</b>\n${q.a}</div></div>`;
+    });
+  }
+  document.getElementById('reviewBox').innerHTML = rv;
+
+  // 全真模式：跳回第1题让用户翻页自评分，结果页底部加"完成评分"按钮
+  if (exam.isReal) {
+    rv = `<div style="margin:14px 0;padding:12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:4px">
+      <b>全真模拟:</b> 选择题已自动判分（${correct}/25 对，得 ${choiceScore} 分）。
+      请点下方"逐题翻页"按钮，对简答(5x6)和论述(2x10)逐题对照答案自评分。
+      完成后回来点"完成评分"记录总分。
+    </div>
+    <div style="margin-bottom:12px">
+      <button class="primary" onclick="backToExamForScoring()">逐题翻页去自评分</button>
+      <button onclick="finishScoring()" style="margin-left:8px">完成评分</button>
+    </div>` + rv;
+    document.getElementById('reviewBox').innerHTML = rv;
+  } else {
+    // 非全真：直接保存
+    saveRecord(rec);
+  }
+}
+
+function backToExamForScoring() {
+  document.getElementById('resultView').style.display = 'none';
+  document.getElementById('examView').style.display = '';
+  exam.idx = 0;
+  renderQ();
+}
+
+function finishScoring() {
+  // 从 exam 收集评分，更新记录
+  const shortSum = Object.values(exam.shortScores).reduce((a,b)=>a+b,0);
+  const essaySum = Object.values(exam.essayScores).reduce((a,b)=>a+b,0);
+  const total = exam.rec.choiceScore + shortSum + essaySum;
+  exam.rec.shortScore = shortSum;
+  exam.rec.essayScore = essaySum;
+  exam.rec.totalScore = total;
+  saveRecord(exam.rec);
+  alert(`总分: ${total} 分（选择${exam.rec.choiceScore} + 简答${shortSum} + 论述${essaySum}）`);
+  goHome();
+}
+
+function goHome() {
+  document.getElementById('resultView').style.display = 'none';
+  document.getElementById('homeView').style.display = '';
+  renderHome();
+}
+
+function exportRecords() {
+  const rs = getRecords();
+  if (!rs.length) { alert('暂无记录'); return; }
+  const blob = new Blob([JSON.stringify(rs, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const d = new Date();
+  a.download = `exam_records_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}.json`;
+  a.click();
+}
+
+function clearRecords() {
+  if (!confirm('确认清空全部历史记录？')) return;
+  localStorage.removeItem('exam_records');
+  renderHome();
+}
+
+loadQuestions();
+</script>
+</body>
+</html>
