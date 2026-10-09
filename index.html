@@ -270,19 +270,39 @@ function backfillWrongBook() {
   return added;
 }
 
-// 学习速览：所有题目+答案+解析全展开，按章节分组
+// 学习速览：所有题目+答案+解析全展开，按章节+题型筛选
+let studyState = { ch: '', type: '' };
 function showStudy() {
   document.getElementById('homeView').style.display = 'none';
   document.getElementById('studyView').style.display = '';
+  studyState = { ch: '', type: '' };
   const chapters = [...new Set(QUESTIONS.map(q => q.chapter))];
-  let html = '<div class="mode-bar"><button onclick="goHome()">返回</button><select id="studyCh" onchange="renderStudy(this.value)"><option value="">全部章节</option>';
-  chapters.forEach(c => { html += `<option value="${c}">${c}</option>`; });
-  html += '</select></div><div id="studyList"></div>';
+  const typeCnt = t => QUESTIONS.filter(q => q.type === t).length;
+  let html = '<div class="mode-bar" style="flex-wrap:wrap;gap:6px"><button onclick="goHome()">返回</button>'
+    + '<span style="color:#78716c;font-size:13px">章节</span><select id="studyCh" onchange="studyState.ch=this.value;renderStudy()">'
+    + '<option value="">全部章节</option>'
+    + chapters.map(c => `<option value="${c}">${c}</option>`).join('')
+    + '</select>'
+    + '<span style="color:#78716c;font-size:13px;margin-left:8px">题型</span>'
+    + ['', 'choice', 'short', 'essay'].map(t => {
+        const lbl = t === '' ? '全部' : t === 'choice' ? `单选(${typeCnt('choice')})` : t === 'short' ? `简答(${typeCnt('short')})` : `论述(${typeCnt('essay')})`;
+        return `<button class="study-tab" data-type="${t}" onclick="studyState.type=this.dataset.type;renderStudy()" style="${t === '' ? 'background:#b91c1c;color:#fff;border-color:#b91c1c' : ''}">${lbl}</button>`;
+      }).join('')
+    + '</div><div id="studyList"></div>';
   document.getElementById('studyView').innerHTML = html;
-  renderStudy('');
+  renderStudy();
 }
-function renderStudy(chFilter) {
-  const list = chFilter ? QUESTIONS.filter(q => q.chapter === chFilter) : QUESTIONS;
+function renderStudy() {
+  // 更新tab高亮
+  document.querySelectorAll('.study-tab').forEach(b => {
+    const on = b.dataset.type === studyState.type;
+    b.style.background = on ? '#b91c1c' : '#fff';
+    b.style.color = on ? '#fff' : '#1a1a1a';
+    b.style.borderColor = on ? '#b91c1c' : '#d0cdc7';
+  });
+  let list = QUESTIONS;
+  if (studyState.ch) list = list.filter(q => q.chapter === studyState.ch);
+  if (studyState.type) list = list.filter(q => q.type === studyState.type);
   document.getElementById('studyList').innerHTML = list.map(q => {
     const typeName = q.type === 'choice' ? '单选' : q.type === 'short' ? '简答' : '论述';
     const typeCls = q.type === 'choice' ? 'tag-choice' : q.type === 'short' ? 'tag-short' : 'tag-essay';
@@ -300,7 +320,7 @@ function renderStudy(chFilter) {
       ${body}
       ${notePanel(q)}
     </div>`;
-  }).join('');
+  }).join('') || '<div style="color:#a8a29e;text-align:center;padding:24px">当前筛选无题目</div>';
 }
 
 function startExam() {
