@@ -45,6 +45,11 @@ th { background: #fafaf9; }
 .stat-cell .num { font-size: 22px; font-weight: 700; color: #b91c1c; }
 .stat-cell .lbl { font-size: 12px; color: #78716c; margin-top: 2px; }
 .footer-note { font-size: 12px; color: #a8a29e; margin-top: 8px; }
+.note-panel { margin-top: 8px; padding: 10px 12px; background: #f5f5f4; border: 1px solid #e5e3df; border-radius: 4px; font-size: 13px; }
+.note-panel b { color: #57534e; font-size: 12px; }
+.note-panel .np-body { margin-top: 4px; line-height: 1.7; color: #44403c; white-space: pre-wrap; word-break: break-word; }
+.note-panel.mine { background: #fffbeb; border-color: #fcd34d; }
+.note-panel.mine b { color: #92400e; }
 </style>
 </head>
 <body>
@@ -278,15 +283,18 @@ function renderQ() {
       }
       else { html += `<div class="judge wrong">回答错误，正确答案: ${q.a}</div>`; html += noteBlock(q); }
       html += `<div class="exp">${q.exp||''}</div>`;
+      html += notePanel(q);
     } else if (exam.submitted) {
       if (userAns === q.a) html += `<div class="judge right">回答正确</div>`;
       else { html += `<div class="judge wrong">${userAns ? '回答错误' : '未作答'}，正确答案: ${q.a}</div>`; html += noteBlock(q); }
       html += `<div class="exp">${q.exp||''}</div>`;
+      html += notePanel(q);
     }
   } else {
     html += `<textarea class="short-answer" placeholder="在此作答..." onchange="saveShort(this.value)" ${exam.submitted?'disabled':''}>${userAns||''}</textarea>`;
     if (exam.submitted) {
       html += `<div class="std-answer"><b>参考答案:</b>\n${q.a}</div>`;
+      html += notePanel(q);
       if (exam.isReal) {
         const max = q.type === 'short' ? 6 : 10;
         const cur = (q.type === 'short' ? exam.shortScores[q.id] : exam.essayScores[q.id]);
@@ -325,6 +333,19 @@ function noteBlock(q) {
   </div>`;
 }
 
+// 考点注释面板：答对答错都显示；答错且有自己的笔记时优先显笔记
+function notePanel(q) {
+  const ns = getNotes();
+  const mine = ns[q.id];
+  const userAns = exam.answers[q.id];
+  const wrong = userAns && userAns !== q.a;
+  if (wrong && mine) {
+    return `<div class="note-panel mine"><b>你的错题笔记</b><div class="np-body">${mine.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div></div>`
+         + `<div class="note-panel"><b>考点注释</b><div class="np-body">${q.note||''}</div></div>`;
+  }
+  return `<div class="note-panel"><b>考点注释</b><div class="np-body">${q.note||''}</div></div>`;
+}
+
 function choose(letter) {
   if (exam.submitted) return;
   const q = exam.list[exam.idx];
@@ -336,15 +357,6 @@ function choose(letter) {
     addCorrect(q.id);
   } else {
     addWrong(q.id);
-    const ns = getNotes();
-    if (ns[q.id]) {
-      // 页内提示面板替代alert
-      const panel = document.createElement('div');
-      panel.style.cssText = 'margin-top:8px;padding:12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:4px;font-size:14px;line-height:1.6;white-space:pre-wrap';
-      panel.innerHTML = '<b style="color:#92400e">笔记提醒</b>\n' + ns[q.id].replace(/</g,'&lt;');
-      document.getElementById('qBox').appendChild(panel);
-      panel.scrollIntoView({behavior:'smooth', block:'nearest'});
-    }
   }
 }
 function saveShort(v) { exam.answers[exam.list[exam.idx].id] = v; }
@@ -405,7 +417,8 @@ function submitExam() {
     rv += `<div class="card" style="margin-bottom:8px"><div class="q"><span class="tag">${q.chapter}</span>${q.q}</div>
       <div style="padding:6px 12px;background:#fef2f2;border-left:3px solid #b91c1c;font-size:13px;margin-bottom:6px"><b>你的答案:</b> ${userOpt ? userOpt : '未作答'}</div>
       <div style="padding:6px 12px;background:#f0fdf4;border-left:3px solid #15803d;font-size:13px;margin-bottom:6px"><b>正确答案:</b> ${correctOpt}</div>
-      <div class="exp">${q.exp||''}</div></div>`;
+      <div class="exp">${q.exp||''}</div>
+      <div class="note-panel"><b>考点注释</b><div class="np-body">${q.note||''}</div></div></div>`;
   });
 
   const others = exam.list.filter(q => q.type !== 'choice');
