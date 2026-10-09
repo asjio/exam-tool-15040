@@ -405,15 +405,22 @@ function notePanel(q) {
   const mine = ns[q.id];
   const userAns = exam.answers[q.id];
   const wrong = userAns && userAns !== q.a;
-  // 优先AI解析，fallback到旧规则note
-  const noteHtml = q.ai_note
-    ? `<div style="line-height:1.7">${q.ai_note.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`
-    : renderNoteHtml(q.note);
+  // 优先AI解析，fallback到旧规则note；简答/论述用更大行距和左边框强调
+  let noteHtml;
+  if (q.ai_note) {
+    const isLong = q.type === 'short' || q.type === 'essay';
+    const style = isLong
+      ? 'line-height:1.8;font-size:14px;padding-left:8px;border-left:3px solid #b91c1c'
+      : 'line-height:1.7';
+    noteHtml = `<div style="${style}">${q.ai_note.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`;
+  } else {
+    noteHtml = renderNoteHtml(q.note);
+  }
   if (wrong && mine) {
     return `<div class="note-panel mine"><b>你的错题笔记</b><div class="np-body">${mine.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div></div>`
-         + `<div class="note-panel"><b>考点注释</b><div class="np-body">${noteHtml}</div></div>`;
+         + `<div class="note-panel"><b>${q.type==='choice'?'考点注释':'答题框架与记忆'}</b><div class="np-body">${noteHtml}</div></div>`;
   }
-  return `<div class="note-panel"><b>考点注释</b><div class="np-body">${noteHtml}</div></div>`;
+  return `<div class="note-panel"><b>${q.type==='choice'?'考点注释':'答题框架与记忆'}</b><div class="np-body">${noteHtml}</div></div>`;
 }
 
 function choose(letter) {
