@@ -104,6 +104,7 @@ th { background: #fafaf9; }
         <option value="essay5">纯论述5题</option>
         <option value="chapter">按章节刷题</option>
         <option value="wrongbook">错题本（累计答对3次移除）</option>
+        <option value="study">学习速览（全部题目+答案+解析）</option>
       </select>
       <select id="chapterSel" style="display:none"></select>
       <button class="primary" onclick="startExam()">开始考试</button>
@@ -150,6 +151,8 @@ th { background: #fafaf9; }
       <button class="primary" onclick="goHome()">返回首页</button>
     </div>
   </div>
+
+  <div id="studyView" style="display:none"></div>
   </div><!-- /mainView -->
 </div>
 
@@ -267,8 +270,42 @@ function backfillWrongBook() {
   return added;
 }
 
+// 学习速览：所有题目+答案+解析全展开，按章节分组
+function showStudy() {
+  document.getElementById('homeView').style.display = 'none';
+  document.getElementById('studyView').style.display = '';
+  const chapters = [...new Set(QUESTIONS.map(q => q.chapter))];
+  let html = '<div class="mode-bar"><button onclick="goHome()">返回</button><select id="studyCh" onchange="renderStudy(this.value)"><option value="">全部章节</option>';
+  chapters.forEach(c => { html += `<option value="${c}">${c}</option>`; });
+  html += '</select></div><div id="studyList"></div>';
+  document.getElementById('studyView').innerHTML = html;
+  renderStudy('');
+}
+function renderStudy(chFilter) {
+  const list = chFilter ? QUESTIONS.filter(q => q.chapter === chFilter) : QUESTIONS;
+  document.getElementById('studyList').innerHTML = list.map(q => {
+    const typeName = q.type === 'choice' ? '单选' : q.type === 'short' ? '简答' : '论述';
+    const typeCls = q.type === 'choice' ? 'tag-choice' : q.type === 'short' ? 'tag-short' : 'tag-essay';
+    let body = '';
+    if (q.type === 'choice') {
+      body = '<div class="opts" style="margin:8px 0">' + q.opts.map(o => {
+        const hit = o.charAt(0) === q.a;
+        return `<div style="padding:4px 10px;${hit ? 'background:#f0fdf4;border-left:3px solid #15803d;font-weight:600' : 'color:#57534e'}">${o}</div>`;
+      }).join('') + '</div>';
+    } else {
+      body = `<div class="std-answer" style="margin:8px 0"><b>参考答案:</b>\n${q.a}</div>`;
+    }
+    return `<div class="card" style="margin-bottom:10px">
+      <div class="q"><span class="tag ${typeCls}">${typeName}</span><span class="tag">${q.chapter}</span>${q.q}</div>
+      ${body}
+      ${notePanel(q)}
+    </div>`;
+  }).join('');
+}
+
 function startExam() {
   const mode = document.getElementById('mode').value;
+  if (mode === 'study') { showStudy(); return; }
   const chs = QUESTIONS.filter(q => q.type === 'choice');
   const shs = QUESTIONS.filter(q => q.type === 'short');
   const ess = QUESTIONS.filter(q => q.type === 'essay');
@@ -403,7 +440,7 @@ function renderNoteHtml(text) {
 function notePanel(q) {
   const ns = getNotes();
   const mine = ns[q.id];
-  const userAns = exam.answers[q.id];
+  const userAns = exam ? exam.answers[q.id] : null;
   const wrong = userAns && userAns !== q.a;
   // 优先AI解析，fallback到旧规则note；简答/论述用更大行距和左边框强调
   let noteHtml;
@@ -547,6 +584,8 @@ function finishScoring() {
 
 function goHome() {
   document.getElementById('resultView').style.display = 'none';
+  document.getElementById('studyView').style.display = 'none';
+  document.getElementById('examView').style.display = 'none';
   document.getElementById('homeView').style.display = '';
   renderHome();
 }
