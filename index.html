@@ -405,11 +405,15 @@ function notePanel(q) {
   const mine = ns[q.id];
   const userAns = exam.answers[q.id];
   const wrong = userAns && userAns !== q.a;
+  // 优先AI解析，fallback到旧规则note
+  const noteHtml = q.ai_note
+    ? `<div style="line-height:1.7">${q.ai_note.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`
+    : renderNoteHtml(q.note);
   if (wrong && mine) {
     return `<div class="note-panel mine"><b>你的错题笔记</b><div class="np-body">${mine.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div></div>`
-         + `<div class="note-panel"><b>考点注释</b><div class="np-body">${renderNoteHtml(q.note)}</div></div>`;
+         + `<div class="note-panel"><b>考点注释</b><div class="np-body">${noteHtml}</div></div>`;
   }
-  return `<div class="note-panel"><b>考点注释</b><div class="np-body">${renderNoteHtml(q.note)}</div></div>`;
+  return `<div class="note-panel"><b>考点注释</b><div class="np-body">${noteHtml}</div></div>`;
 }
 
 function choose(letter) {
@@ -484,7 +488,7 @@ function submitExam() {
       <div style="padding:6px 12px;background:#fef2f2;border-left:3px solid #b91c1c;font-size:13px;margin-bottom:6px"><b>你的答案:</b> ${userOpt ? userOpt : '未作答'}</div>
       <div style="padding:6px 12px;background:#f0fdf4;border-left:3px solid #15803d;font-size:13px;margin-bottom:6px"><b>正确答案:</b> ${correctOpt}</div>
       <div class="exp">${q.exp||''}</div>
-      <div class="note-panel"><b>考点注释</b><div class="np-body">${renderNoteHtml(q.note)}</div></div></div>`;
+      ${notePanel(q)}</div>`;
   });
 
   const others = exam.list.filter(q => q.type !== 'choice');
