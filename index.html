@@ -319,9 +319,9 @@ function saveNote(qid, text) {
 function noteBlock(q) {
   const ns = getNotes();
   const existing = ns[q.id] || '';
-  return `<div style="margin-top:8px;padding:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:4px">
+  return `<div style="margin-top:8px;padding:12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:4px">
     <b style="font-size:13px">错题笔记</b><span style="color:#78716c;font-size:12px;margin-left:8px">下次再错时提醒你</span>
-    <textarea class="short-answer" style="min-height:50px;margin-top:6px" placeholder="记点啥...（如：混淆点、关键词）" onchange="saveNote(${q.id},this.value)">${existing}</textarea>
+    <textarea class="short-answer" style="min-height:120px;margin-top:6px;font-size:14px;line-height:1.6" placeholder="记点啥...（如：混淆点、关键词）" onchange="saveNote(${q.id},this.value)">${existing}</textarea>
   </div>`;
 }
 
@@ -337,7 +337,14 @@ function choose(letter) {
   } else {
     addWrong(q.id);
     const ns = getNotes();
-    if (ns[q.id]) setTimeout(() => alert('你之前错过这题，笔记提醒：\n\n' + ns[q.id]), 100);
+    if (ns[q.id]) {
+      // 页内提示面板替代alert
+      const panel = document.createElement('div');
+      panel.style.cssText = 'margin-top:8px;padding:12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:4px;font-size:14px;line-height:1.6;white-space:pre-wrap';
+      panel.innerHTML = '<b style="color:#92400e">笔记提醒</b>\n' + ns[q.id].replace(/</g,'&lt;');
+      document.getElementById('qBox').appendChild(panel);
+      panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
   }
 }
 function saveShort(v) { exam.answers[exam.list[exam.idx].id] = v; }
