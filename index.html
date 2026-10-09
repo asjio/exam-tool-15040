@@ -319,6 +319,7 @@ function renderStudy() {
       <div class="q"><span class="tag ${typeCls}">${typeName}</span><span class="tag">${q.chapter}</span>${q.q}</div>
       ${body}
       ${notePanel(q)}
+      ${noteBlock(q)}
     </div>`;
   }).join('') || '<div style="color:#a8a29e;text-align:center;padding:24px">当前筛选无题目</div>';
 }
@@ -437,9 +438,12 @@ function saveNote(qid, text) {
 }
 function noteBlock(q) {
   const ns = getNotes();
-  const existing = ns[q.id] || '';
+  const existing = (ns[q.id] || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/`/g,'&#96;').replace(/\$\{/g,'$&#123;');
+  const inStudy = !exam;
+  const title = inStudy ? '我的笔记' : '错题笔记';
+  const hint = inStudy ? '学习心得/混淆点/口诀，所有模式共享' : '下次再错时提醒你';
   return `<div style="margin-top:8px;padding:12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:4px">
-    <b style="font-size:13px">错题笔记</b><span style="color:#78716c;font-size:12px;margin-left:8px">下次再错时提醒你</span>
+    <b style="font-size:13px">${title}</b><span style="color:#78716c;font-size:12px;margin-left:8px">${hint}</span>
     <textarea class="short-answer" style="min-height:120px;margin-top:6px;font-size:14px;line-height:1.6" placeholder="记点啥...（如：混淆点、关键词）" onchange="saveNote(${q.id},this.value)">${existing}</textarea>
   </div>`;
 }
