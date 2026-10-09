@@ -47,15 +47,44 @@ th { background: #fafaf9; }
 .footer-note { font-size: 12px; color: #a8a29e; margin-top: 8px; }
 .note-panel { margin-top: 8px; padding: 10px 12px; background: #f5f5f4; border: 1px solid #e5e3df; border-radius: 4px; font-size: 13px; }
 .note-panel b { color: #57534e; font-size: 12px; }
-.note-panel .np-body { margin-top: 4px; line-height: 1.7; color: #44403c; white-space: pre-wrap; word-break: break-word; }
+.note-panel .np-body { margin-top: 4px; line-height: 1.7; color: #44403c; white-space: pre-wrap; word-break: break-word; font-size: 13px; }
+.note-panel .np-body b { color: #b91c1c; }
 .note-panel.mine { background: #fffbeb; border-color: #fcd34d; }
 .note-panel.mine b { color: #92400e; }
+.subject-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
+.subject-card { background: #fff; border: 1px solid #e5e3df; border-radius: 6px; padding: 24px 16px; cursor: pointer; transition: border-color .15s; }
+.subject-card:hover { border-color: #b91c1c; }
+.sj-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.sj-code { font-size: 12px; color: #78716c; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>15040 习思想概论 - 考前练习</h1>
-  <div class="sub">10月24日考试 · 共 <span id="totalQ"></span> 题 · 每次交卷自动记录到本地，可导出JSON存档</div>
+  <div id="subjectView" class="card" style="text-align:center;padding:40px 20px">
+    <h1 style="margin-bottom:8px">自考刷题工具</h1>
+    <div class="sub">选择科目开始练习</div>
+    <div class="subject-grid">
+      <div class="subject-card" onclick="pickSubject('xsx')">
+        <div class="sj-name">习思想概论</div>
+        <div class="sj-code">15040 · 232题</div>
+      </div>
+      <div class="subject-card" onclick="pickSubject('mks')">
+        <div class="sj-name">马克思主义基本原理</div>
+        <div class="sj-code">03709 · 33题</div>
+      </div>
+      <div class="subject-card" onclick="pickSubject('jds')">
+        <div class="sj-name">中国近现代史纲要</div>
+        <div class="sj-code">03708 · 128题</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mainView" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+    <h1 id="appTitle"></h1>
+    <button onclick="goSubjects()" style="font-size:12px">切换科目</button>
+  </div>
+  <div class="sub" id="appSub"></div>
 
   <div class="card" id="homeView">
     <div class="stat-grid">
@@ -121,17 +150,42 @@ th { background: #fafaf9; }
       <button class="primary" onclick="goHome()">返回首页</button>
     </div>
   </div>
+  </div><!-- /mainView -->
 </div>
 
 <script>
+// 科目配置：key -> {名称, 题库文件, 满分配置}
+const SUBJECTS = {
+  xsx: { name: '15040 习思想概论', file: 'questions.json', sub: '10月考试 · 全真模拟=25选择x2+5简答x6+2论述x10=100分' },
+  mks: { name: '03709 马克思主义基本原理', file: 'mks.json', sub: '10月考试 · 全真模拟=25选择x2+5简答x6+2论述x10=100分' },
+  jds: { name: '03708 中国近现代史纲要', file: 'jds.json', sub: '10月考试 · 全真模拟=25选择x2+5简答x6+2论述x10=100分' },
+};
+let SUBJECT = null; // 当前科目key
 let QUESTIONS = [];
 let exam = null;
 let timer = null;
 
+// localStorage key 按科目隔离
+function sk(key) { return SUBJECT + '_' + key; }
+
+function pickSubject(key) {
+  SUBJECT = key;
+  localStorage.setItem('exam_subject', key);
+  document.getElementById('subjectView').style.display = 'none';
+  document.getElementById('mainView').style.display = '';
+  document.getElementById('appTitle').textContent = SUBJECTS[key].name + ' - 考前练习';
+  loadQuestions();
+}
+
+function goSubjects() {
+  document.getElementById('mainView').style.display = 'none';
+  document.getElementById('subjectView').style.display = '';
+}
+
 async function loadQuestions() {
-  const r = await fetch('questions.json');
+  const r = await fetch(SUBJECTS[SUBJECT].file);
   QUESTIONS = await r.json();
-  document.getElementById('totalQ').textContent = QUESTIONS.length;
+  document.getElementById('appSub').textContent = SUBJECTS[SUBJECT].sub + ' · 共 ' + QUESTIONS.length + ' 题';
   const chapters = [...new Set(QUESTIONS.map(q => q.chapter))];
   document.getElementById('chapterSel').innerHTML = chapters.map(c => `<option value="${c}">${c}</option>`).join('');
   renderHome();
@@ -142,11 +196,11 @@ document.getElementById('mode').addEventListener('change', e => {
 });
 
 function getRecords() {
-  try { return JSON.parse(localStorage.getItem('exam_records') || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(sk('exam_records')) || '[]'); } catch { return []; }
 }
 function saveRecord(rec) {
   const rs = getRecords(); rs.push(rec);
-  localStorage.setItem('exam_records', JSON.stringify(rs));
+  localStorage.setItem(sk('exam_records'), JSON.stringify(rs));
 }
 
 function renderHome() {
@@ -168,8 +222,8 @@ function shuffle(a) { const x = a.slice(); for (let i=x.length-1;i>0;i--) { cons
 function sample(arr, n) { return shuffle(arr).slice(0, Math.min(n, arr.length)); }
 
 // 错题本：{qid: {wrong: N, correctStreak: M}}
-function getWrongBook() { try { return JSON.parse(localStorage.getItem('wrong_book')||'{}'); } catch { return {}; } }
-function saveWrongBook(wb) { localStorage.setItem('wrong_book', JSON.stringify(wb)); }
+function getWrongBook() { try { return JSON.parse(localStorage.getItem(sk('wrong_book'))||'{}'); } catch { return {}; } }
+function saveWrongBook(wb) { localStorage.setItem(sk('wrong_book'), JSON.stringify(wb)); }
 function addWrong(qid) {
   const wb = getWrongBook();
   if (!wb[qid]) wb[qid] = { wrong: 0, correctStreak: 0 };
@@ -318,11 +372,11 @@ function setScore(qid, type, val, max) {
 }
 
 // 错题笔记：localStorage存 {qid: text}
-function getNotes() { try { return JSON.parse(localStorage.getItem('q_notes')||'{}'); } catch { return {}; } }
+function getNotes() { try { return JSON.parse(localStorage.getItem(sk('q_notes'))||'{}'); } catch { return {}; } }
 function saveNote(qid, text) {
   const ns = getNotes();
   if (text.trim()) ns[qid] = text; else delete ns[qid];
-  localStorage.setItem('q_notes', JSON.stringify(ns));
+  localStorage.setItem(sk('q_notes'), JSON.stringify(ns));
 }
 function noteBlock(q) {
   const ns = getNotes();
@@ -333,6 +387,18 @@ function noteBlock(q) {
   </div>`;
 }
 
+// 解析note为结构化展示（复盘区和答题区共用）
+function renderNoteHtml(text) {
+  if (!text) return '';
+  return text.split('|').map(seg => {
+    seg = seg.trim();
+    if (seg.startsWith('考点：')) return `<div style="margin-bottom:2px"><b style="color:#b91c1c">考点</b> ${seg.slice(3)}</div>`;
+    if (seg.startsWith('干扰项：') || seg.startsWith('真题提示：')) return `<div style="color:#78716c;font-size:12px">${seg}</div>`;
+    if (seg.startsWith('答题框架：')) return `<div style="margin-bottom:2px"><b style="color:#92400e">答题框架</b> ${seg.slice(5)}</div>`;
+    return `<div>${seg}</div>`;
+  }).join('');
+}
+
 // 考点注释面板：答对答错都显示；答错且有自己的笔记时优先显笔记
 function notePanel(q) {
   const ns = getNotes();
@@ -341,9 +407,9 @@ function notePanel(q) {
   const wrong = userAns && userAns !== q.a;
   if (wrong && mine) {
     return `<div class="note-panel mine"><b>你的错题笔记</b><div class="np-body">${mine.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div></div>`
-         + `<div class="note-panel"><b>考点注释</b><div class="np-body">${q.note||''}</div></div>`;
+         + `<div class="note-panel"><b>考点注释</b><div class="np-body">${renderNoteHtml(q.note)}</div></div>`;
   }
-  return `<div class="note-panel"><b>考点注释</b><div class="np-body">${q.note||''}</div></div>`;
+  return `<div class="note-panel"><b>考点注释</b><div class="np-body">${renderNoteHtml(q.note)}</div></div>`;
 }
 
 function choose(letter) {
@@ -418,7 +484,7 @@ function submitExam() {
       <div style="padding:6px 12px;background:#fef2f2;border-left:3px solid #b91c1c;font-size:13px;margin-bottom:6px"><b>你的答案:</b> ${userOpt ? userOpt : '未作答'}</div>
       <div style="padding:6px 12px;background:#f0fdf4;border-left:3px solid #15803d;font-size:13px;margin-bottom:6px"><b>正确答案:</b> ${correctOpt}</div>
       <div class="exp">${q.exp||''}</div>
-      <div class="note-panel"><b>考点注释</b><div class="np-body">${q.note||''}</div></div></div>`;
+      <div class="note-panel"><b>考点注释</b><div class="np-body">${renderNoteHtml(q.note)}</div></div></div>`;
   });
 
   const others = exam.list.filter(q => q.type !== 'choice');
@@ -487,11 +553,15 @@ function exportRecords() {
 
 function clearRecords() {
   if (!confirm('确认清空全部历史记录？')) return;
-  localStorage.removeItem('exam_records');
+  localStorage.removeItem(sk('exam_records'));
   renderHome();
 }
 
-loadQuestions();
+// 启动：恢复上次科目或显示选择页
+const savedSubject = localStorage.getItem('exam_subject');
+if (savedSubject && SUBJECTS[savedSubject]) {
+  pickSubject(savedSubject);
+}
 </script>
 </body>
 </html>
