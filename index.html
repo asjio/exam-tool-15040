@@ -51,7 +51,7 @@ th { background: #fafaf9; }
 .note-panel .np-body b { color: #b91c1c; }
 .note-panel.mine { background: #fffbeb; border-color: #fcd34d; }
 .note-panel.mine b { color: #92400e; }
-.subject-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
+.subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-top: 20px; }
 .subject-card { background: #fff; border: 1px solid #e5e3df; border-radius: 6px; padding: 24px 16px; cursor: pointer; transition: border-color .15s; }
 .subject-card:hover { border-color: #b91c1c; }
 .sj-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
@@ -75,6 +75,14 @@ th { background: #fafaf9; }
       <div class="subject-card" onclick="pickSubject('jds')">
         <div class="sj-name">中国近现代史纲要</div>
         <div class="sj-code">03708 · 367题</div>
+      </div>
+      <div class="subject-card" onclick="pickSubject('jzfh')">
+        <div class="sj-name">建筑防火</div>
+        <div class="sj-code">12409 · 453题</div>
+      </div>
+      <div class="subject-card" onclick="pickSubject('xfaq')">
+        <div class="sj-name">消防安全系统工程</div>
+        <div class="sj-code">14428 · 207题</div>
       </div>
     </div>
   </div>
@@ -104,7 +112,7 @@ th { background: #fafaf9; }
         <option value="essay5">纯论述5题</option>
         <option value="chapter">按章节刷题</option>
         <option value="wrongbook">错题本（累计答对3次移除）</option>
-        <option value="study">学习速览（全部题目+答案+解析）</option>
+        <option value="study">学习速览（全部题目+答案）</option>
       </select>
       <select id="chapterSel" style="display:none"></select>
       <button class="primary" onclick="startExam()">开始考试</button>
@@ -113,7 +121,7 @@ th { background: #fafaf9; }
     </div>
     <h3 style="margin:14px 0 8px">历史记录</h3>
     <table>
-      <thead><tr><th>时间</th><th>模式</th><th>题数</th><th>选择正确</th><th>正确率</th><th>用时</th></tr></thead>
+      <thead><tr><th>时间</th><th>模式</th><th>题数</th><th id="histTh4">选择正确</th><th>正确率</th><th>用时</th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
     <div class="footer-note">记录存浏览器localStorage；点"导出存档"保存到本地文件夹（建议存到 桌面\自考\exam_records\）</div>
@@ -141,9 +149,9 @@ th { background: #fafaf9; }
   <div class="card" id="resultView" style="display:none">
     <h3>考试结果</h3>
     <div class="stat-grid" style="margin-top:12px">
-      <div class="stat-cell"><div class="num" id="rScore">-</div><div class="lbl">选择正确率</div></div>
-      <div class="stat-cell"><div class="num" id="rCorrect">-</div><div class="lbl">选择对题</div></div>
-      <div class="stat-cell"><div class="num" id="rWrong">-</div><div class="lbl">选择错题</div></div>
+      <div class="stat-cell"><div class="num" id="rScore">-</div><div class="lbl" id="rScoreLbl">选择正确率</div></div>
+      <div class="stat-cell"><div class="num" id="rCorrect">-</div><div class="lbl" id="rCorrectLbl">选择对题</div></div>
+      <div class="stat-cell"><div class="num" id="rWrong">-</div><div class="lbl" id="rWrongLbl">选择错题</div></div>
       <div class="stat-cell"><div class="num" id="rTime">-</div><div class="lbl">用时</div></div>
     </div>
     <div id="reviewBox"></div>
@@ -157,12 +165,36 @@ th { background: #fafaf9; }
 </div>
 
 <script>
-// 科目配置：key -> {名称, 题库文件, 满分配置}
+// 科目配置：key -> {名称, 题库文件, 全真模拟结构}
+// real: [{type, n, score}]，type 见 TYPE_META
 const SUBJECTS = {
-  xsx: { name: '15040 习思想概论', file: 'questions.json', sub: '10月考试 · 全真模拟=25选择x2+5简答x6+2论述x10=100分' },
-  mks: { name: '03709 马克思主义基本原理', file: 'mks.json', sub: '10月考试 · 全真模拟=25选择x2+5简答x6+2论述x10=100分' },
-  jds: { name: '03708 中国近现代史纲要', file: 'jds.json', sub: '10月考试 · 全真模拟=25选择x2+5简答x6+2论述x10=100分' },
+  xsx: { name: '15040 习思想概论', file: 'questions.json', sub: '10月考试 · 全真模拟=25选择x2+5简答x6+2论述x10=100分', legacy: true,
+         real: [{type:'choice',n:25,score:2},{type:'short',n:5,score:6},{type:'essay',n:2,score:10}] },
+  mks: { name: '03709 马克思主义基本原理', file: 'mks.json', sub: '10月考试 · 全真模拟=25选择x2+5简答x6+2论述x10=100分', legacy: true,
+         real: [{type:'choice',n:25,score:2},{type:'short',n:5,score:6},{type:'essay',n:2,score:10}] },
+  jds: { name: '03708 中国近现代史纲要', file: 'jds.json', sub: '10月考试 · 全真模拟=25选择x2+5简答x6+2论述x10=100分', legacy: true,
+         real: [{type:'choice',n:25,score:2},{type:'short',n:5,score:6},{type:'essay',n:2,score:10}] },
+  jzfh: { name: '12409 建筑防火', file: 'jzfh.json', sub: '历年真题题库 · 全真模拟=15单选x2+6简答x5+2案例x8+1计算x8+2论述x8=100分',
+          real: [{type:'choice',n:15,score:2},{type:'short',n:6,score:5},{type:'case',n:2,score:8},{type:'calc',n:1,score:8},{type:'essay',n:2,score:8}] },
+  xfaq: { name: '14428 消防安全系统工程', file: 'xfaq.json', sub: '历年真题题库 · 全真模拟=20单选x1+5多选x2+5判断x1+5简答x5+2计算x10+2论述x10=100分',
+          real: [{type:'choice',n:20,score:1},{type:'multi',n:5,score:2},{type:'judge',n:5,score:1},{type:'short',n:5,score:5},{type:'calc',n:2,score:10},{type:'essay',n:2,score:10}] },
 };
+
+// 题型元信息
+const TYPE_META = {
+  choice: { name: '单选', cls: 'tag-choice', obj: true },
+  multi:  { name: '多选', cls: 'tag-choice', obj: true },
+  judge:  { name: '判断', cls: 'tag-choice', obj: true },
+  noun:   { name: '名词解释', cls: 'tag-short', obj: false },
+  short:  { name: '简答', cls: 'tag-short', obj: false },
+  calc:   { name: '计算', cls: 'tag-essay', obj: false },
+  case:   { name: '案例', cls: 'tag-essay', obj: false },
+  essay:  { name: '论述', cls: 'tag-essay', obj: false },
+  analysis:{ name: '分析', cls: 'tag-essay', obj: false },
+};
+function tMeta(t) { return TYPE_META[t] || { name: t, cls: 'tag', obj: false }; }
+function isObj(t) { return !!tMeta(t).obj; }
+function isLegacy() { return !!(SUBJECTS[SUBJECT] && SUBJECTS[SUBJECT].legacy); }
 let SUBJECT = null; // 当前科目key
 let QUESTIONS = [];
 let exam = null;
@@ -176,7 +208,13 @@ function pickSubject(key) {
   localStorage.setItem('exam_subject', key);
   document.getElementById('subjectView').style.display = 'none';
   document.getElementById('mainView').style.display = '';
+  document.title = SUBJECTS[key].name + ' - 考前练习';
   document.getElementById('appTitle').textContent = SUBJECTS[key].name + ' - 考前练习';
+  document.getElementById('appSub').textContent = '题库加载中...';
+  document.getElementById('homeView').style.display = '';
+  document.getElementById('examView').style.display = 'none';
+  document.getElementById('resultView').style.display = 'none';
+  document.getElementById('studyView').style.display = 'none';
   loadQuestions();
 }
 
@@ -189,6 +227,37 @@ async function loadQuestions() {
   const r = await fetch(SUBJECTS[SUBJECT].file);
   QUESTIONS = await r.json();
   document.getElementById('appSub').textContent = SUBJECTS[SUBJECT].sub + ' · 共 ' + QUESTIONS.length + ' 题';
+  // 全真模拟说明按科目结构动态生成
+  const conf = SUBJECTS[SUBJECT].real;
+  const full = conf.reduce((a, c) => a + c.n * c.score, 0);
+  const desc = conf.map(c => `${c.n}${tMeta(c.type).name}x${c.score}`).join('+');
+  const realOpt = document.querySelector('#mode option[value="real"]');
+  if (realOpt) {
+    // 前三门沿用原文案
+    realOpt.textContent = SUBJECTS[SUBJECT].legacy
+      ? '全真模拟（选择25x2 + 简答5x6 + 论述2x10 = 100分）'
+      : `全真模拟（${desc} = ${full}分）`;
+  }
+  // 前三门保持原有“选择/简答”文案；新增科目用自己的文案
+  const legacy = isLegacy();
+  const setOpt = (v, t) => { const o = document.querySelector(`#mode option[value="${v}"]`); if (o) o.textContent = t; };
+  if (legacy) {
+    setOpt('random20', '随机20题（选择15+简答5）');
+    setOpt('random40', '随机40题（选择30+简答10）');
+    setOpt('choice30', '纯选择30题');
+    setOpt('short10', '纯简答10题');
+    setOpt('essay5', '纯论述5题');
+    setOpt('chapter', '按章节刷题');
+    document.getElementById('histTh4').textContent = '选择正确';
+  } else {
+    setOpt('random20', '随机20题（客观15+主观5）');
+    setOpt('random40', '随机40题（客观30+主观10）');
+    setOpt('choice30', '客观题30题');
+    setOpt('short10', '主观题10题');
+    setOpt('essay5', '论述5题');
+    setOpt('chapter', '按题型刷题');
+    document.getElementById('histTh4').textContent = '客观正确';
+  }
   const chapters = [...new Set(QUESTIONS.map(q => q.chapter))];
   document.getElementById('chapterSel').innerHTML = chapters.map(c => `<option value="${c}">${c}</option>`).join('');
   renderHome();
@@ -260,7 +329,7 @@ function backfillWrongBook() {
   let added = 0;
   rs.forEach(r => {
     (r.detail || []).forEach(d => {
-      if (d.type === 'choice' && d.right === false && !wb[d.id]) {
+      if (isObj(d.type) && d.right === false && !wb[d.id]) {
         wb[d.id] = { wrong: 1, correctStreak: 0 };
         added++;
       }
@@ -278,14 +347,16 @@ function showStudy() {
   studyState = { ch: '', type: '' };
   const chapters = [...new Set(QUESTIONS.map(q => q.chapter))];
   const typeCnt = t => QUESTIONS.filter(q => q.type === t).length;
+  const order = ['choice','multi','judge','noun','short','calc','case','essay','analysis'];
+  const types = [...new Set(QUESTIONS.map(q => q.type))].sort((a,b) => order.indexOf(a) - order.indexOf(b));
   let html = '<div class="mode-bar" style="flex-wrap:wrap;gap:6px"><button onclick="goHome()">返回</button>'
-    + '<span style="color:#78716c;font-size:13px">章节</span><select id="studyCh" onchange="studyState.ch=this.value;renderStudy()">'
-    + '<option value="">全部章节</option>'
+    + `<span style="color:#78716c;font-size:13px">${isLegacy() ? '章节' : '分类'}</span><select id="studyCh" onchange="studyState.ch=this.value;renderStudy()">`
+    + `<option value="">${isLegacy() ? '全部章节' : '全部分类'}</option>`
     + chapters.map(c => `<option value="${c}">${c}</option>`).join('')
     + '</select>'
     + '<span style="color:#78716c;font-size:13px;margin-left:8px">题型</span>'
-    + ['', 'choice', 'short', 'essay'].map(t => {
-        const lbl = t === '' ? '全部' : t === 'choice' ? `单选(${typeCnt('choice')})` : t === 'short' ? `简答(${typeCnt('short')})` : `论述(${typeCnt('essay')})`;
+    + [''].concat(types).map(t => {
+        const lbl = t === '' ? (isLegacy() ? '全部' : `全部(${QUESTIONS.length})`) : `${tMeta(t).name}(${typeCnt(t)})`;
         return `<button class="study-tab" data-type="${t}" onclick="studyState.type=this.dataset.type;renderStudy()" style="${t === '' ? 'background:#b91c1c;color:#fff;border-color:#b91c1c' : ''}">${lbl}</button>`;
       }).join('')
     + '</div><div id="studyList"></div>';
@@ -304,12 +375,12 @@ function renderStudy() {
   if (studyState.ch) list = list.filter(q => q.chapter === studyState.ch);
   if (studyState.type) list = list.filter(q => q.type === studyState.type);
   document.getElementById('studyList').innerHTML = list.map(q => {
-    const typeName = q.type === 'choice' ? '单选' : q.type === 'short' ? '简答' : '论述';
-    const typeCls = q.type === 'choice' ? 'tag-choice' : q.type === 'short' ? 'tag-short' : 'tag-essay';
+    const typeName = tMeta(q.type).name;
+    const typeCls = tMeta(q.type).cls;
     let body = '';
-    if (q.type === 'choice') {
+    if (q.opts && q.opts.length) {
       body = '<div class="opts" style="margin:8px 0">' + q.opts.map(o => {
-        const hit = o.charAt(0) === q.a;
+        const hit = (q.a || '').includes(o.charAt(0));
         return `<div style="padding:4px 10px;${hit ? 'background:#f0fdf4;border-left:3px solid #15803d;font-weight:600' : 'color:#57534e'}">${o}</div>`;
       }).join('') + '</div>';
     } else {
@@ -327,16 +398,41 @@ function renderStudy() {
 function startExam() {
   const mode = document.getElementById('mode').value;
   if (mode === 'study') { showStudy(); return; }
-  const chs = QUESTIONS.filter(q => q.type === 'choice');
-  const shs = QUESTIONS.filter(q => q.type === 'short');
-  const ess = QUESTIONS.filter(q => q.type === 'essay');
+  const conf = SUBJECTS[SUBJECT].real;
+  const objQs = QUESTIONS.filter(q => isObj(q.type));
+  const subjQs = QUESTIONS.filter(q => !isObj(q.type));
   let picked = [], modeName = '';
-  if (mode === 'real') { picked = [...sample(chs,25), ...sample(shs,5), ...sample(ess,2)]; modeName = '全真模拟'; }
-  else if (mode === 'random20') { picked = [...sample(chs,15), ...sample(shs,5)]; modeName = '随机20题'; }
-  else if (mode === 'random40') { picked = [...sample(chs,30), ...sample(shs,10)]; modeName = '随机40题'; }
-  else if (mode === 'choice30') { picked = sample(chs,30); modeName = '纯选择30题'; }
-  else if (mode === 'short10') { picked = sample(shs,10); modeName = '纯简答10题'; }
-  else if (mode === 'essay5') { picked = sample(ess,5); modeName = '纯论述5题'; }
+  if (mode === 'real') {
+    conf.forEach(c => {
+      const pool = QUESTIONS.filter(q => q.type === c.type);
+      picked = picked.concat(sample(pool, c.n));
+    });
+    modeName = '全真模拟';
+  }
+  else if (mode === 'random20') {
+    if (isLegacy()) picked = [...sample(QUESTIONS.filter(q => q.type === 'choice'),15), ...sample(QUESTIONS.filter(q => q.type === 'short'),5)];
+    else picked = [...sample(objQs,15), ...sample(subjQs,5)];
+    modeName = '随机20题';
+  }
+  else if (mode === 'random40') {
+    if (isLegacy()) picked = [...sample(QUESTIONS.filter(q => q.type === 'choice'),30), ...sample(QUESTIONS.filter(q => q.type === 'short'),10)];
+    else picked = [...sample(objQs,30), ...sample(subjQs,10)];
+    modeName = '随机40题';
+  }
+  else if (mode === 'choice30') {
+    if (isLegacy()) picked = sample(QUESTIONS.filter(q => q.type === 'choice'),30);
+    else picked = sample(objQs,30);
+    modeName = isLegacy() ? '纯选择30题' : '客观题30题';
+  }
+  else if (mode === 'short10') {
+    if (isLegacy()) picked = sample(QUESTIONS.filter(q => q.type === 'short'),10);
+    else picked = sample(subjQs,10);
+    modeName = isLegacy() ? '纯简答10题' : '主观题10题';
+  }
+  else if (mode === 'essay5') {
+    const ess = QUESTIONS.filter(q => q.type === 'essay');
+    picked = sample(ess.length ? ess : subjQs, 5); modeName = isLegacy() ? '纯论述5题' : '论述5题';
+  }
   else if (mode === 'wrongbook') {
     const wb = getWrongBook();
     const wbIds = Object.keys(wb).map(Number);
@@ -345,8 +441,9 @@ function startExam() {
     shuffle(picked);
     modeName = '错题本(' + picked.length + '题)';
   }
-  else { const ch = document.getElementById('chapterSel').value; picked = QUESTIONS.filter(q => q.chapter === ch); modeName = '章节: ' + ch; }
-  exam = { list: picked, idx: 0, answers: {}, shortScores: {}, essayScores: {}, startTime: Date.now(), modeName, submitted: false, isReal: mode === 'real', isWrongBook: mode === 'wrongbook' };
+  else { const ch = document.getElementById('chapterSel').value; picked = QUESTIONS.filter(q => q.chapter === ch); modeName = isLegacy() ? ('章节: ' + ch) : ch; }
+  if (!picked.length) { alert('当前模式没有可用题目'); return; }
+  exam = { list: picked, idx: 0, answers: {}, scores: {}, multiSel: {}, startTime: Date.now(), modeName, submitted: false, isReal: mode === 'real', isWrongBook: mode === 'wrongbook', conf };
   document.getElementById('homeView').style.display = 'none';
   document.getElementById('resultView').style.display = 'none';
   document.getElementById('examView').style.display = '';
@@ -359,14 +456,29 @@ function startExam() {
   }, 1000);
 }
 
+function scoreOf(q) {
+  if (!exam || !exam.conf) return 2;
+  const c = exam.conf.find(x => x.type === q.type);
+  return c ? c.score : 2;
+}
+function isCorrect(q) {
+  const u = (exam && exam.answers[q.id]) || '';
+  if (!u) return false;
+  if (q.type === 'multi') {
+    const a = (q.a || '').split('').sort().join('');
+    return u.split('').sort().join('') === a;
+  }
+  return u === q.a;
+}
+
 function renderQ() {
   const q = exam.list[exam.idx];
   document.getElementById('exProg').textContent = `第 ${exam.idx+1} / ${exam.list.length} 题`;
   const userAns = exam.answers[q.id];
-  const typeName = q.type === 'choice' ? '单选' : q.type === 'short' ? '简答' : '论述';
-  const typeCls = q.type === 'choice' ? 'tag-choice' : q.type === 'short' ? 'tag-short' : 'tag-essay';
-  const score = exam.isReal ? (q.type === 'choice' ? ' (2分)' : q.type === 'short' ? ' (6分)' : ' (10分)') : '';
-  let html = `<div class="q"><span class="tag ${typeCls}">${typeName}${score}</span><span class="tag">${q.chapter}</span>${exam.idx+1}. ${q.q}</div>`;
+  const meta = tMeta(q.type);
+  const score = exam.isReal ? ` (${scoreOf(q)}分)` : '';
+  let html = `<div class="q"><span class="tag ${meta.cls}">${meta.name}${score}</span><span class="tag">${q.chapter}</span>${exam.idx+1}. ${q.q}</div>`;
+
   if (q.type === 'choice') {
     const answered = !!userAns;
     html += '<div class="opts">';
@@ -402,17 +514,58 @@ function renderQ() {
       html += `<div class="exp">${q.exp||''}</div>`;
       html += notePanel(q);
     }
+  } else if (q.type === 'multi') {
+    const chosen = userAns || exam.multiSel[q.id] || '';
+    html += '<div class="opts">';
+    q.opts.forEach(o => {
+      const letter = o.charAt(0);
+      let cls = '';
+      if (userAns || exam.submitted) {
+        if ((q.a || '').includes(letter)) cls = 'correct';
+        else if (chosen.includes(letter)) cls = 'wrong';
+      } else if (chosen.includes(letter)) {
+        cls = 'sel';
+      }
+      html += `<label class="${cls}" onclick="multiToggle('${letter}')">${o}</label>`;
+    });
+    html += '</div>';
+    if (!userAns && !exam.submitted) {
+      html += `<div style="margin-top:8px"><button class="primary" onclick="submitMulti()">确认答案</button>
+        <span style="color:#78716c;font-size:12px;margin-left:8px">多选题：选完后点确认判分</span></div>`;
+    } else {
+      if (isCorrect(q)) html += `<div class="judge right">回答正确</div>`;
+      else { html += `<div class="judge wrong">${userAns ? '回答错误' : '未作答'}，正确答案: ${q.a}</div>`; html += noteBlock(q); }
+      html += `<div class="exp">${q.exp||''}</div>`;
+      html += notePanel(q);
+    }
+  } else if (q.type === 'judge') {
+    html += '<div class="opts">';
+    ['✔','×'].forEach(sym => {
+      let cls = '';
+      if (userAns || exam.submitted) {
+        if (q.a === sym) cls = 'correct';
+        else if (userAns === sym) cls = 'wrong';
+      }
+      html += `<label class="${cls}" onclick="choose('${sym}')">${sym === '✔' ? '正确 ✔' : '错误 ×'}</label>`;
+    });
+    html += '</div>';
+    if (userAns || exam.submitted) {
+      if (isCorrect(q)) html += `<div class="judge right">回答正确</div>`;
+      else { html += `<div class="judge wrong">${userAns ? '回答错误' : '未作答'}，正确答案: ${q.a}</div>`; html += noteBlock(q); }
+      html += `<div class="exp">${q.exp||''}</div>`;
+      html += notePanel(q);
+    }
   } else {
     html += `<textarea class="short-answer" placeholder="在此作答..." onchange="saveShort(this.value)" ${exam.submitted?'disabled':''}>${userAns||''}</textarea>`;
     if (exam.submitted) {
       html += `<div class="std-answer"><b>参考答案:</b>\n${q.a}</div>`;
       html += notePanel(q);
       if (exam.isReal) {
-        const max = q.type === 'short' ? 6 : 10;
-        const cur = (q.type === 'short' ? exam.shortScores[q.id] : exam.essayScores[q.id]);
+        const max = scoreOf(q);
+        const cur = exam.scores[q.id];
         html += `<div style="margin-top:8px;padding:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:4px">
           <b>对照答案自评分（满分${max}分）:</b>
-          <input type="number" min="0" max="${max}" step="0.5" value="${cur ?? ''}" onchange="setScore(${q.id},'${q.type}',this.value,${max})" style="width:70px;padding:4px 8px;border:1px solid #d0cdc7;border-radius:4px;margin-left:6px">
+          <input type="number" min="0" max="${max}" step="0.5" value="${cur ?? ''}" onchange="setScore(${q.id},this.value,${max})" style="width:70px;padding:4px 8px;border:1px solid #d0cdc7;border-radius:4px;margin-left:6px">
           <span style="color:#78716c;font-size:12px;margin-left:8px">输完自动保存</span>
         </div>`;
       }
@@ -421,12 +574,11 @@ function renderQ() {
   document.getElementById('qBox').innerHTML = html;
 }
 
-function setScore(qid, type, val, max) {
+function setScore(qid, val, max) {
   let v = parseFloat(val);
   if (isNaN(v)) v = 0;
   v = Math.max(0, Math.min(max, v));
-  if (type === 'short') exam.shortScores[qid] = v;
-  else exam.essayScores[qid] = v;
+  exam.scores[qid] = v;
 }
 
 // 错题笔记：localStorage存 {qid: text}
@@ -451,12 +603,15 @@ function noteBlock(q) {
 // 解析note为结构化展示（复盘区和答题区共用）
 function renderNoteHtml(text) {
   if (!text) return '';
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return text.split('|').map(seg => {
     seg = seg.trim();
-    if (seg.startsWith('考点：')) return `<div style="margin-bottom:2px"><b style="color:#b91c1c">考点</b> ${seg.slice(3)}</div>`;
-    if (seg.startsWith('干扰项：') || seg.startsWith('真题提示：')) return `<div style="color:#78716c;font-size:12px">${seg}</div>`;
-    if (seg.startsWith('答题框架：')) return `<div style="margin-bottom:2px"><b style="color:#92400e">答题框架</b> ${seg.slice(5)}</div>`;
-    return `<div>${seg}</div>`;
+    if (seg.startsWith('考点：')) return `<div style="margin-bottom:3px"><b style="color:#b91c1c">考点：</b>${esc(seg.slice(3))}</div>`;
+    if (seg.startsWith('解析：')) return `<div style="margin-bottom:3px"><b style="color:#b91c1c">解析：</b>${esc(seg.slice(3))}</div>`;
+    if (seg.startsWith('记忆：')) return `<div style="margin-top:4px;padding:3px 8px;background:#fffbeb;border-radius:3px;color:#92400e"><b>记忆：</b>${esc(seg.slice(3))}</div>`;
+    if (seg.startsWith('干扰项：') || seg.startsWith('真题提示：')) return `<div style="color:#78716c;font-size:12px">${esc(seg)}</div>`;
+    if (seg.startsWith('答题框架：')) return `<div style="margin-bottom:3px"><b style="color:#92400e">答题框架：</b>${esc(seg.slice(5))}</div>`;
+    return `<div>${esc(seg)}</div>`;
   }).join('');
 }
 
@@ -467,21 +622,24 @@ function notePanel(q) {
   const userAns = exam ? exam.answers[q.id] : null;
   const wrong = userAns && userAns !== q.a;
   // 优先AI解析，fallback到旧规则note；简答/论述用更大行距和左边框强调
-  let noteHtml;
+  let noteHtml = '';
   if (q.ai_note) {
-    const isLong = q.type === 'short' || q.type === 'essay';
+    const isLong = !isObj(q.type);
     const style = isLong
       ? 'line-height:1.8;font-size:14px;padding-left:8px;border-left:3px solid #b91c1c'
       : 'line-height:1.7';
     noteHtml = `<div style="${style}">${q.ai_note.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`;
-  } else {
+  } else if (q.note) {
     noteHtml = renderNoteHtml(q.note);
   }
+  const title = isObj(q.type) ? '考点注释' : '答题框架与记忆';
+  const hasNote = !!(noteHtml && noteHtml.trim());
   if (wrong && mine) {
     return `<div class="note-panel mine"><b>你的错题笔记</b><div class="np-body">${mine.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div></div>`
-         + `<div class="note-panel"><b>${q.type==='choice'?'考点注释':'答题框架与记忆'}</b><div class="np-body">${noteHtml}</div></div>`;
+         + (hasNote ? `<div class="note-panel"><b>${title}</b><div class="np-body">${noteHtml}</div></div>` : '');
   }
-  return `<div class="note-panel"><b>${q.type==='choice'?'考点注释':'答题框架与记忆'}</b><div class="np-body">${noteHtml}</div></div>`;
+  if (!hasNote) return '';
+  return `<div class="note-panel"><b>${title}</b><div class="np-body">${noteHtml}</div></div>`;
 }
 
 function choose(letter) {
@@ -490,12 +648,28 @@ function choose(letter) {
   if (exam.answers[q.id]) return;
   exam.answers[q.id] = letter;
   renderQ();
-  // 记录错题本
-  if (letter === q.a) {
-    addCorrect(q.id);
-  } else {
-    addWrong(q.id);
-  }
+  // 记录错题本（客观题）
+  if (isCorrect(q)) addCorrect(q.id);
+  else addWrong(q.id);
+}
+// 多选题：点选项切换选中，再点“确认答案”判分
+function multiToggle(letter) {
+  if (exam.submitted) return;
+  const q = exam.list[exam.idx];
+  if (exam.answers[q.id]) return;
+  let s = exam.multiSel[q.id] || '';
+  s = s.includes(letter) ? s.replace(letter, '') : (s + letter).split('').sort().join('');
+  exam.multiSel[q.id] = s;
+  renderQ();
+}
+function submitMulti() {
+  const q = exam.list[exam.idx];
+  const s = exam.multiSel[q.id] || '';
+  if (!s) { alert('请至少选择一个选项'); return; }
+  exam.answers[q.id] = s;
+  renderQ();
+  if (isCorrect(q)) addCorrect(q.id);
+  else addWrong(q.id);
 }
 function saveShort(v) { exam.answers[exam.list[exam.idx].id] = v; }
 function prevQ() { if (exam.idx > 0) { exam.idx--; renderQ(); } }
@@ -506,73 +680,76 @@ function submitExam() {
   clearInterval(timer);
   exam.submitted = true;
   const duration = Math.floor((Date.now() - exam.startTime) / 1000);
-  const choiceQs = exam.list.filter(q => q.type === 'choice');
-  const correct = choiceQs.filter(q => exam.answers[q.id] === q.a).length;
-  const rate = choiceQs.length ? Math.round(correct / choiceQs.length * 100) : 0;
-  // 全真模式算总分（仅选择题客观分；简答/论述自评分后累加）
-  let choiceScore = 0, totalScore = 0, hasTotal = false;
+  const objQs = exam.list.filter(q => isObj(q.type));
+  const subjQs = exam.list.filter(q => !isObj(q.type));
+  const correct = objQs.filter(q => isCorrect(q)).length;
+  const rate = objQs.length ? Math.round(correct / objQs.length * 100) : 0;
+  // 全真模式：客观题按题型分值累加；主观题自评分后累加
+  let objScore = 0, objFull = 0;
   if (exam.isReal) {
-    choiceScore = correct * 2;
-    hasTotal = true;
-    totalScore = choiceScore; // 自评分在结果页输入后通过 finishScoring 累加
+    objQs.forEach(q => { objFull += scoreOf(q); if (isCorrect(q)) objScore += scoreOf(q); });
   }
   const rec = {
     time: new Date().toLocaleString('zh-CN'),
     modeName: exam.modeName,
     total: exam.list.length,
-    choiceTotal: choiceQs.length,
+    choiceTotal: objQs.length,
     correct, rate,
     duration: Math.floor(duration/60) + '分' + (duration%60) + '秒',
     isReal: exam.isReal,
-    choiceScore,
+    choiceScore: objScore,
+    objFull,
     totalScore: null,  // 待自评分后更新
-    detail: exam.list.map(q => ({ id: q.id, chapter: q.chapter, type: q.type, q: q.q, user: exam.answers[q.id] || '', answer: q.a, right: q.type === 'choice' ? exam.answers[q.id] === q.a : null }))
+    detail: exam.list.map(q => ({ id: q.id, chapter: q.chapter, type: q.type, q: q.q, user: exam.answers[q.id] || '', answer: q.a, right: isObj(q.type) ? isCorrect(q) : null }))
   };
   exam.rec = rec;
   // 展示结果
   document.getElementById('examView').style.display = 'none';
   document.getElementById('resultView').style.display = '';
   if (exam.isReal) {
-    document.getElementById('rScore').textContent = choiceScore + '分';
-    document.getElementById('rScore').previousElementSibling; // noop
-    document.querySelectorAll('#resultView .stat-cell .lbl')[0].textContent = '选择题得分/50';
+    document.getElementById('rScore').textContent = objScore + '分';
+    document.getElementById('rScoreLbl').textContent = isLegacy() ? '选择题得分/50' : `客观题得分/${objFull}`;
   } else {
     document.getElementById('rScore').textContent = rate + '%';
-    document.querySelectorAll('#resultView .stat-cell .lbl')[0].textContent = '选择正确率';
+    document.getElementById('rScoreLbl').textContent = isLegacy() ? '选择正确率' : '客观题正确率';
   }
+  document.getElementById('rCorrectLbl').textContent = isLegacy() ? '选择对题' : '客观题对题';
+  document.getElementById('rWrongLbl').textContent = isLegacy() ? '选择错题' : '客观题错题';
   document.getElementById('rCorrect').textContent = correct;
-  document.getElementById('rWrong').textContent = choiceQs.length - correct;
+  document.getElementById('rWrong').textContent = objQs.length - correct;
   document.getElementById('rTime').textContent = rec.duration;
 
   // 复盘
-  const wrongs = exam.list.filter(q => q.type === 'choice' && exam.answers[q.id] !== q.a);
+  const wrongs = objQs.filter(q => !isCorrect(q));
   let rv = '<h3 style="margin:14px 0 8px">错题复盘</h3>';
-  if (!wrongs.length) rv += '<div style="color:#15803d;padding:8px">选择全对，牛！</div>';
+  if (!wrongs.length) rv += `<div style="color:#15803d;padding:8px">${isLegacy() ? '选择全对，牛！' : '客观题全对，牛！'}</div>`;
   wrongs.forEach(q => {
-    const userLetter = exam.answers[q.id];
-    const userOpt = userLetter ? q.opts.find(o => o.charAt(0) === userLetter) : null;
-    const correctOpt = q.opts.find(o => o.charAt(0) === q.a);
-    rv += `<div class="card" style="margin-bottom:8px"><div class="q"><span class="tag">${q.chapter}</span>${q.q}</div>
-      <div style="padding:6px 12px;background:#fef2f2;border-left:3px solid #b91c1c;font-size:13px;margin-bottom:6px"><b>你的答案:</b> ${userOpt ? userOpt : '未作答'}</div>
+    const ua = exam.answers[q.id] || '';
+    const userOpt = ua ? q.opts.filter(o => ua.includes(o.charAt(0))).join('；') : null;
+    const correctOpt = q.opts.filter(o => (q.a || '').includes(o.charAt(0))).join('；');
+    const meta = tMeta(q.type);
+    rv += `<div class="card" style="margin-bottom:8px"><div class="q"><span class="tag ${meta.cls}">${meta.name}</span><span class="tag">${q.chapter}</span>${q.q}</div>
+      <div style="padding:6px 12px;background:#fef2f2;border-left:3px solid #b91c1c;font-size:13px;margin-bottom:6px"><b>你的答案:</b> ${userOpt || '未作答'}</div>
       <div style="padding:6px 12px;background:#f0fdf4;border-left:3px solid #15803d;font-size:13px;margin-bottom:6px"><b>正确答案:</b> ${correctOpt}</div>
       <div class="exp">${q.exp||''}</div>
       ${notePanel(q)}</div>`;
   });
 
-  const others = exam.list.filter(q => q.type !== 'choice');
-  if (others.length) {
-    rv += `<h3 style="margin:14px 0 8px">简答/论述对照 ${exam.isReal ? '(逐题翻页自评分，最后点下方"完成评分")' : ''}</h3>`;
-    others.forEach(q => {
-      rv += `<div class="card" style="margin-bottom:8px"><div class="q"><span class="tag">${q.type==='short'?'简答':'论述'}</span><span class="tag">${q.chapter}</span>${q.q}</div><div style="font-size:13px;color:#57534c;margin-bottom:6px"><b>你的答案:</b><br>${(exam.answers[q.id]||'未作答').replace(/\n/g,'<br>')}</div><div class="std-answer"><b>参考答案:</b>\n${q.a}</div></div>`;
+  if (subjQs.length) {
+    rv += `<h3 style="margin:14px 0 8px">${isLegacy() ? '简答/论述对照' : '主观题对照'} ${exam.isReal ? '(逐题翻页自评分，最后点下方"完成评分")' : ''}</h3>`;
+    subjQs.forEach(q => {
+      const meta = tMeta(q.type);
+      rv += `<div class="card" style="margin-bottom:8px"><div class="q"><span class="tag ${meta.cls}">${meta.name}</span><span class="tag">${q.chapter}</span>${q.q}</div><div style="font-size:13px;color:#57534c;margin-bottom:6px"><b>你的答案:</b><br>${(exam.answers[q.id]||'未作答').replace(/\n/g,'<br>')}</div><div class="std-answer"><b>参考答案:</b>\n${q.a}</div></div>`;
     });
   }
   document.getElementById('reviewBox').innerHTML = rv;
 
   // 全真模式：跳回第1题让用户翻页自评分，结果页底部加"完成评分"按钮
   if (exam.isReal) {
+    const dep = exam.conf.filter(c => !isObj(c.type)).map(c => `${tMeta(c.type).name}(${c.n}x${c.score})`).join('、');
     rv = `<div style="margin:14px 0;padding:12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:4px">
-      <b>全真模拟:</b> 选择题已自动判分（${correct}/25 对，得 ${choiceScore} 分）。
-      请点下方"逐题翻页"按钮，对简答(5x6)和论述(2x10)逐题对照答案自评分。
+      <b>全真模拟:</b> ${isLegacy() ? '选择题' : '客观题'}已自动判分（${correct}/${objQs.length} 对，得 ${objScore}/${objFull} 分）。
+      请点下方"逐题翻页"按钮，对 ${dep || '主观题'} 逐题对照答案自评分。
       完成后回来点"完成评分"记录总分。
     </div>
     <div style="margin-bottom:12px">
@@ -594,15 +771,14 @@ function backToExamForScoring() {
 }
 
 function finishScoring() {
-  // 从 exam 收集评分，更新记录
-  const shortSum = Object.values(exam.shortScores).reduce((a,b)=>a+b,0);
-  const essaySum = Object.values(exam.essayScores).reduce((a,b)=>a+b,0);
-  const total = exam.rec.choiceScore + shortSum + essaySum;
-  exam.rec.shortScore = shortSum;
-  exam.rec.essayScore = essaySum;
+  // 从 exam 收集主观题评分，更新记录
+  const subjQs = exam.list.filter(q => !isObj(q.type));
+  const subjSum = subjQs.reduce((a, q) => a + (exam.scores[q.id] || 0), 0);
+  const total = exam.rec.choiceScore + subjSum;
+  exam.rec.subjectiveScore = subjSum;
   exam.rec.totalScore = total;
   saveRecord(exam.rec);
-  alert(`总分: ${total} 分（选择${exam.rec.choiceScore} + 简答${shortSum} + 论述${essaySum}）`);
+  alert(`总分: ${total} 分（客观${exam.rec.choiceScore} + 主观${subjSum}）`);
   goHome();
 }
 
